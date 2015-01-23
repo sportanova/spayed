@@ -7,11 +7,26 @@ import spray.routing._
 import Directives._
 import spray.http.HttpRequest
 import spray.http.HttpResponse
+import spray.http._
+import HttpMethods._
+import HttpHeaders._
+import ContentTypes._
+import spray.http._
+import spray.httpx.marshalling.Marshaller
+import spray.client.pipelining._
+import scala.concurrent.Future
+import spray.httpx.SprayJsonSupport._
+import spray.json._
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
+import scala.util.Try
+import CouchMethods.Couch
 
 object Main extends App with SimpleRoutingApp {
-  implicit val system = ActorSystem()
-
-  def log(timeInterval: Long): Unit = {
+  implicit val system = Couch.init("logs")
+  implicit val executionContext = system.dispatcher
+  implicit val intMarshaller = Marshaller.of[Int](`application/json`) {
+    (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""{ "average": $value }"""))
   }
   
   def time(): Directive0 = {
@@ -20,7 +35,7 @@ object Main extends App with SimpleRoutingApp {
       ctx.withHttpResponseEntityMapped { response =>
         val totalTime = System.currentTimeMillis - timeStamp
         (ctx.request, response, System.currentTimeMillis - timeStamp)
-        log(totalTime)
+        Couch.insertDoc("logs", Couch.RouteTime("/hello", totalTime, "routeTime"))
         response
       }
     }
@@ -33,6 +48,15 @@ object Main extends App with SimpleRoutingApp {
           complete {
             <h1>Say hello to spray</h1>
           }
+        }
+      }
+    } ~
+    path("time") {
+      get {
+        complete {
+          Couch.getDoc("logs", "_design/ave_time/_view/routes").map(x => {
+            Couch.getAverage(x)
+          })
         }
       }
     }
