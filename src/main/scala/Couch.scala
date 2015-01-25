@@ -25,12 +25,17 @@ import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
 import scala.concurrent.ExecutionContext
+import play.api.libs.json.Json
+import spray.httpx.PlayJsonSupport
 
 object Couch {
   implicit val system = ActorSystem()
   implicit val executionContext = system.dispatcher
   
   case class RouteTime(route: String, time: Long, `type`: String)
+  case class RouteTimeDoc(key: Option[String], value: List[Int])
+
+//  implicit val RouteTimeDocReads = Json.reads[RouteTimeDoc]
   
   object MyJsonProtocol extends DefaultJsonProtocol {
     implicit val docFormat = jsonFormat3(RouteTime)
@@ -61,7 +66,11 @@ object Couch {
       ~> sendReceive
       ~> unmarshal[String]
     )
-    pipeline(Get(s"http://127.0.0.1:5984/$dbName/$doc"))
+    pipeline(Get(s"http://127.0.0.1:5984/$dbName/$doc")).map(x => {
+      println(s"!!!!!!!!!! x $x")
+      Json.parse(x) \\ "rows"
+      x
+    })
   }
 
   def insertDoc(dbName: String, doc: RouteTime): Future[HttpResponse] = {
