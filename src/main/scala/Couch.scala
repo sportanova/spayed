@@ -1,37 +1,15 @@
 package CouchMethods
 
-import spray.routing.SimpleRoutingApp
-import akka.actor.Actor._
-import akka.actor.ActorSystem
-import akka.actor.Props
-import akka.pattern.ask
-import spray.routing._
-import Directives._
-import spray.http.HttpRequest
-import spray.http.HttpResponse
-import spray.http._
-import HttpMethods._
-import HttpHeaders._
-import ContentTypes._
-import spray.http._
-import spray.httpx.marshalling.Marshaller
-import spray.client.pipelining._
 import scala.concurrent.Future
-import spray.httpx.SprayJsonSupport._
-import spray.json._
-import scala.util.Success
-import scala.util.Failure
-import scala.concurrent.ExecutionContext
-import spray.httpx.PlayJsonSupport
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import spray.httpx.unmarshalling._
-import spray.httpx.unmarshalling._
-import spray.util._
-import spray.http._
-import ContentTypes._
 import UnmarshallHelpers._
 import UnmarshallHelpers.ReduceDoc
+import akka.actor.ActorSystem
+import spray.client.pipelining._
+import spray.http._
+import spray.http.ContentTypes._
+import spray.http.HttpMethods._
+import spray.httpx.SprayJsonSupport._
+import spray.json._
 
 object Couch {
   implicit val system = ActorSystem()
@@ -51,8 +29,7 @@ object Couch {
 
   def getDoc(dbName: String, doc: String): Future[List[ReduceDoc]] = {
     val pipeline: HttpRequest => Future[List[ReduceDoc]] = (
-      addHeader("", "")
-      ~> sendReceive
+      sendReceive
       ~> unmarshal[List[ReduceDoc]]
     )
 
@@ -61,18 +38,14 @@ object Couch {
   }
 
   def insertDoc(dbName: String, doc: RouteTime): Future[HttpResponse] = {
-    val pipeline: HttpRequest => Future[HttpResponse] = (
-      addHeader("", "")
-      ~> sendReceive
-    )
+    val pipeline: HttpRequest => Future[HttpResponse] = (sendReceive)
 
     pipeline(Post(s"http://127.0.0.1:5984/$dbName", doc))
   }
 
   def insertView(dbName: String, viewPath: String, view: String): Future[HttpResponse] = {
     val pipeline: HttpRequest => Future[HttpResponse] = (
-      addHeader("", "")
-      ~> sendReceive
+      sendReceive
     )
 
     val req = HttpRequest(method = PUT, uri = s"http://127.0.0.1:5984/$dbName$viewPath", entity = HttpEntity(`application/json`, viewJSON))

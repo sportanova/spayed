@@ -1,34 +1,10 @@
 package UnmarshallHelpers
 
-import spray.routing.SimpleRoutingApp
-import akka.actor.Actor._
-import akka.actor.ActorSystem
-import akka.actor.Props
-import akka.pattern.ask
-import spray.routing._
-import Directives._
-import spray.http.HttpRequest
-import spray.http.HttpResponse
-import spray.http._
-import HttpMethods._
-import HttpHeaders._
-import ContentTypes._
-import spray.http._
-import spray.httpx.marshalling.Marshaller
-import spray.client.pipelining._
-import scala.concurrent.Future
-import spray.httpx.SprayJsonSupport._
-import spray.json._
-import scala.util.Success
-import scala.util.Failure
-import scala.concurrent.ExecutionContext
-import spray.httpx.PlayJsonSupport
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import spray.httpx.unmarshalling._
-import spray.httpx.unmarshalling._
-import spray.util._
 import spray.http._
+import spray.httpx.marshalling.Marshaller
 import ContentTypes._
 
 object UnmarshallHelpers {
@@ -43,6 +19,13 @@ object UnmarshallHelpers {
         "value" -> r.value
       )
     }
+  }
+
+  implicit val intMarshaller = Marshaller.of[Int](`application/json`) {
+    (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""{ "average": $value }"""))
+  }
+  implicit val reduceDocsMarshaller = Marshaller.of[List[ReduceDoc]](`application/json`) {
+    (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""${Json.toJson(value)}"""))
   }
 
   object ReduceDoc {
