@@ -6,6 +6,7 @@ import spray.httpx.unmarshalling._
 import spray.http._
 import spray.httpx.marshalling.Marshaller
 import ContentTypes._
+import scala.util.{Try, Success, Failure}
 
 object UnmarshallHelpers {
   case class ReduceDoc(key: Option[String], value: List[Int])
@@ -21,11 +22,27 @@ object UnmarshallHelpers {
     }
   }
 
+  def calcAverageToTenth(n: Float, d: Float): BigDecimal = {
+    BigDecimal(n.toDouble / d.toDouble).setScale(1, BigDecimal.RoundingMode.HALF_UP) 
+  }
+
+  def getAverage(docs: List[ReduceDoc]): Option[BigDecimal] = {
+    docs.headOption match {
+      case Some(doc) => {
+        for {
+          sum <- doc.value.lift(0)
+          count <- doc.value.lift(1)
+        } yield (calcAverageToTenth(sum, count))
+      }
+      case None => None
+    }
+  }
+
   implicit val intMarshaller = Marshaller.of[Int](`application/json`) {
     (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""{ "average": $value }"""))
   }
   implicit val reduceDocsMarshaller = Marshaller.of[List[ReduceDoc]](`application/json`) {
-    (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""${Json.toJson(value)}"""))
+    (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""${Json.toJson(getAverage(value))}"""))
   }
 
   object ReduceDoc {
