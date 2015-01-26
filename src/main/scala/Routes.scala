@@ -1,22 +1,11 @@
 import spray.routing._
-import Directives._
-import CouchMethods.Couch
-import UnmarshallHelpers.UnmarshallHelpers.ReduceDoc
+import CouchMethods.Couch.getDoc
+import CouchMethods.Couch.init
+import CustomDirectives.CustomDirectives.time
 
 object Main extends App with SimpleRoutingApp {
-  implicit val system = Couch.init("logs")
+  implicit val system = init("logs")
   implicit val executionContext = system.dispatcher
-
-  def time(): Directive0 = {
-    mapRequestContext { ctx => 
-      val timeStamp = System.currentTimeMillis
-      ctx.withHttpResponseEntityMapped { response =>
-        val totalTime = System.currentTimeMillis - timeStamp
-        Couch.insertDoc("logs", Couch.RouteTime("/hello", totalTime, "routeTime"))
-        response
-      }
-    }
-  }
 
   startServer(interface = "localhost", port = 8080) {
     time() {
@@ -31,7 +20,7 @@ object Main extends App with SimpleRoutingApp {
     path("time") {
       get {
         complete {
-          Couch.getDoc("logs", "_design/ave_time/_view/routes")
+          getDoc("logs", "_design/ave_time/_view/routes")
         }
       }
     }
