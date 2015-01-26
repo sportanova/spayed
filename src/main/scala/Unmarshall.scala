@@ -10,6 +10,16 @@ import scala.util.{Try, Success, Failure}
 
 object UnmarshallHelpers {
   case class ReduceDoc(key: Option[String], value: List[Int])
+  object ReduceDoc {
+    implicit val ReduceDocUnmarshaller = Unmarshaller[List[ReduceDoc]](MediaTypes.`text/plain`) {
+      case HttpEntity.NonEmpty(contentType, data) => {
+        (Json.parse(data.asString) \ "rows").validate[List[ReduceDoc]] match {
+          case s: JsSuccess[List[ReduceDoc]] => s.get
+          case e: JsError => List()
+        }
+      }
+    }
+  }
 
   implicit val ReduceDocReads = Json.reads[ReduceDoc]
 
@@ -43,16 +53,5 @@ object UnmarshallHelpers {
   }
   implicit val reduceDocsMarshaller = Marshaller.of[List[ReduceDoc]](`application/json`) {
     (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""${Json.toJson(getAverage(value))}"""))
-  }
-
-  object ReduceDoc {
-    implicit val ReduceDocUnmarshaller = Unmarshaller[List[ReduceDoc]](MediaTypes.`text/plain`) {
-      case HttpEntity.NonEmpty(contentType, data) => {
-        (Json.parse(data.asString) \ "rows").validate[List[ReduceDoc]] match {
-          case s: JsSuccess[List[ReduceDoc]] => s.get
-          case e: JsError => List()
-        }
-      }
-    }
   }
 }
