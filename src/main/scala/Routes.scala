@@ -1,10 +1,11 @@
 import spray.routing._
 import CouchMethods.Couch.getDoc
-import CouchMethods.Couch.init
+import CouchMethods.Couch.initCouchDB
+import CouchMethods.Couch.system
 import CustomDirectives.CustomDirectives.time
 
 object Main extends App with SimpleRoutingApp {
-  implicit val system = init("logs")
+  initCouchDB("logs")
   implicit val executionContext = system.dispatcher
 
   startServer(interface = "localhost", port = 8080) {

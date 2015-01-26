@@ -54,10 +54,8 @@ object Couch {
 
   val viewJSON = """ {"language":"javascript","views":{"routes":{"reduce": "function (keys, values, rereduce) {if(rereduce) {var sum = 0;var count = 0;for(var i = 0; i < values.length; i++) {sum = sum + values[i][0];count = count + values[i][1];}return [sum, count];} else {var sum = 0;var count = 0;for(var i = 0; i < values.length; i++) {count++;sum = sum + values[i];}return [sum, count];}}","map":"function(doc) { if (doc.type == 'routeTime')  emit(doc.route, doc.time) }"}}} """
     
-  def init(dbName: String): ActorSystem = {
+  def initCouchDB(dbName: String) = {
     createDB(dbName)
     insertView(dbName, "/_design/ave_time", viewJSON)
-    
-    system
   }
 }
