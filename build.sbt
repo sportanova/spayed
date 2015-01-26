@@ -21,6 +21,6 @@ libraryDependencies ++= {
     "io.spray" %%  "spray-json" % "1.3.1",
     "org.specs2"          %%  "specs2-core"   % "2.3.11" % "test",
     "org.json4s" %% "json4s-jackson" % "3.2.11",
-    "com.typesafe.play" %% "play-json" % "2.3.4"
+    "com.typesafe.play" % "play-json_2.11" % "2.4.0-M2"
   )
 }

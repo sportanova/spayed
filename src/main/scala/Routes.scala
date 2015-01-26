@@ -21,6 +21,7 @@ import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import scala.util.Try
 import CouchMethods.Couch
+import play.api.libs.json._
 
 object Main extends App with SimpleRoutingApp {
   implicit val system = Couch.init("logs")
@@ -28,13 +29,15 @@ object Main extends App with SimpleRoutingApp {
   implicit val intMarshaller = Marshaller.of[Int](`application/json`) {
     (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""{ "average": $value }"""))
   }
-  
+  implicit val reduceDocsMarshaller = Marshaller.of[List[Couch.ReduceDoc]](`application/json`) {
+    (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""${Json.toJson(value)}"""))
+  }
+
   def time(): Directive0 = {
     mapRequestContext { ctx => 
       val timeStamp = System.currentTimeMillis
       ctx.withHttpResponseEntityMapped { response =>
         val totalTime = System.currentTimeMillis - timeStamp
-        (ctx.request, response, System.currentTimeMillis - timeStamp)
         Couch.insertDoc("logs", Couch.RouteTime("/hello", totalTime, "routeTime"))
         response
       }
@@ -54,9 +57,7 @@ object Main extends App with SimpleRoutingApp {
     path("time") {
       get {
         complete {
-          Couch.getDoc("logs", "_design/ave_time/_view/routes").map(x => {
-            Couch.getAverage(x)
-          })
+          Couch.getDoc("logs", "_design/ave_time/_view/routes")
         }
       }
     }

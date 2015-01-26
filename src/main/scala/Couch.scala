@@ -25,17 +25,27 @@ import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
 import scala.concurrent.ExecutionContext
-import play.api.libs.json.Json
 import spray.httpx.PlayJsonSupport
+import play.api.libs.json._
+import play.api.libs.functional.syntax._
 
 object Couch {
   implicit val system = ActorSystem()
   implicit val executionContext = system.dispatcher
   
   case class RouteTime(route: String, time: Long, `type`: String)
-  case class RouteTimeDoc(key: Option[String], value: List[Int])
+  case class ReduceDoc(key: Option[String], value: List[Int])
 
-//  implicit val RouteTimeDocReads = Json.reads[RouteTimeDoc]
+  implicit val ReduceDocReads = Json.reads[ReduceDoc]
+
+  implicit val reduceDocWrites = new Writes[ReduceDoc] {
+    def writes(r: ReduceDoc): play.api.libs.json.JsValue = {
+      Json.obj(
+        "key" -> r.key,
+        "value" -> r.value
+      )
+    }
+  }
   
   object MyJsonProtocol extends DefaultJsonProtocol {
     implicit val docFormat = jsonFormat3(RouteTime)
@@ -47,29 +57,18 @@ object Couch {
     val response: Future[HttpResponse] = pipeline(Put(s"http://127.0.0.1:5984/$dbName"))
   }
 
-  def getAverage(json: String)(implicit ec: ExecutionContext): Int = {
-    val aveTF = for {
-      l <- Try{parse(json).values.asInstanceOf[Map[String,Any]]("rows").asInstanceOf[List[Map[String,List[BigInt]]]].head("value")}
-      sum <- Try{l(0)}
-      count <- Try{l(1)}
-    } yield (sum / count)
-
-    aveTF match {
-      case Success(s) => s.toInt
-      case Failure(ex) => 0
-    }
-  }
-
-  def getDoc(dbName: String, doc: String): Future[String] = {
+  def getDoc(dbName: String, doc: String): Future[List[ReduceDoc]] = {
     val pipeline: HttpRequest => Future[String] = (
       addHeader("", "")
       ~> sendReceive
       ~> unmarshal[String]
     )
-    pipeline(Get(s"http://127.0.0.1:5984/$dbName/$doc")).map(x => {
-      println(s"!!!!!!!!!! x $x")
-      Json.parse(x) \\ "rows"
-      x
+
+    pipeline(Get(s"http://127.0.0.1:5984/$dbName/$doc")).map(json => {
+      (Json.parse(json) \ "rows").validate[List[ReduceDoc]] match {
+        case s: JsSuccess[List[ReduceDoc]] => s.get
+        case e: JsError => List()
+      }
     })
   }
 
