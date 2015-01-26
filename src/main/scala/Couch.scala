@@ -30,44 +30,23 @@ import spray.httpx.unmarshalling._
 import spray.util._
 import spray.http._
 import ContentTypes._
+import UnmarshallHelpers._
+import UnmarshallHelpers.ReduceDoc
 
 object Couch {
   implicit val system = ActorSystem()
   implicit val executionContext = system.dispatcher
   
   case class RouteTime(route: String, time: Long, `type`: String)
-  case class ReduceDoc(key: Option[String], value: List[Int])
-
-  object ReduceDoc {
-    implicit val ReduceDocUnmarshaller = Unmarshaller[List[ReduceDoc]](MediaTypes.`text/plain`) {
-      case HttpEntity.NonEmpty(contentType, data) => {
-        (Json.parse(data.asString) \ "rows").validate[List[ReduceDoc]] match {
-          case s: JsSuccess[List[ReduceDoc]] => s.get
-          case e: JsError => List()
-        }
-      }
-    }
-  }
-
-  implicit val ReduceDocReads = Json.reads[ReduceDoc]
-
-  implicit val reduceDocWrites = new Writes[ReduceDoc] {
-    def writes(r: ReduceDoc): play.api.libs.json.JsValue = {
-      Json.obj(
-        "key" -> r.key,
-        "value" -> r.value
-      )
-    }
-  }
 
   object MyJsonProtocol extends DefaultJsonProtocol {
     implicit val docFormat = jsonFormat3(RouteTime)
   }
   import MyJsonProtocol._
   
-  def createDB(dbName: String) = {
+  def createDB(dbName: String): Future[HttpResponse] = {
     val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
-    val response: Future[HttpResponse] = pipeline(Put(s"http://127.0.0.1:5984/$dbName"))
+    pipeline(Put(s"http://127.0.0.1:5984/$dbName"))
   }
 
   def getDoc(dbName: String, doc: String): Future[List[ReduceDoc]] = {

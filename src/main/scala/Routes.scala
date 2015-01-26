@@ -22,6 +22,7 @@ import org.json4s.jackson.JsonMethods._
 import scala.util.Try
 import CouchMethods.Couch
 import play.api.libs.json._
+import UnmarshallHelpers.UnmarshallHelpers.ReduceDoc
 
 object Main extends App with SimpleRoutingApp {
   implicit val system = Couch.init("logs")
@@ -29,7 +30,7 @@ object Main extends App with SimpleRoutingApp {
   implicit val intMarshaller = Marshaller.of[Int](`application/json`) {
     (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""{ "average": $value }"""))
   }
-  implicit val reduceDocsMarshaller = Marshaller.of[List[Couch.ReduceDoc]](`application/json`) {
+  implicit val reduceDocsMarshaller = Marshaller.of[List[ReduceDoc]](`application/json`) {
     (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"""${Json.toJson(value)}"""))
   }
 
