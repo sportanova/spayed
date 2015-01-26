@@ -38,7 +38,7 @@ object Main extends App with SimpleRoutingApp {
       val timeStamp = System.currentTimeMillis
       ctx.withHttpResponseEntityMapped { response =>
         val totalTime = System.currentTimeMillis - timeStamp
-        Couch.insertDoc("logs", Couch.RouteTime("/hello", totalTime, "routeTime"))
+//        Couch.insertDoc("logs", Couch.RouteTime("/hello", totalTime, "routeTime"))
         response
       }
     }

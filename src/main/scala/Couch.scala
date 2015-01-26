@@ -19,15 +19,17 @@ import spray.client.pipelining._
 import scala.concurrent.Future
 import spray.httpx.SprayJsonSupport._
 import spray.json._
-import org.json4s._
-import org.json4s.jackson.JsonMethods._
-import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
 import scala.concurrent.ExecutionContext
 import spray.httpx.PlayJsonSupport
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
+import spray.httpx.unmarshalling._
+import spray.httpx.unmarshalling._
+import spray.util._
+import spray.http._
+import ContentTypes._
 
 object Couch {
   implicit val system = ActorSystem()
@@ -35,6 +37,17 @@ object Couch {
   
   case class RouteTime(route: String, time: Long, `type`: String)
   case class ReduceDoc(key: Option[String], value: List[Int])
+
+  object ReduceDoc {
+    implicit val ReduceDocUnmarshaller = Unmarshaller[List[ReduceDoc]](MediaTypes.`text/plain`) {
+      case HttpEntity.NonEmpty(contentType, data) => {
+        (Json.parse(data.asString) \ "rows").validate[List[ReduceDoc]] match {
+          case s: JsSuccess[List[ReduceDoc]] => s.get
+          case e: JsError => List()
+        }
+      }
+    }
+  }
 
   implicit val ReduceDocReads = Json.reads[ReduceDoc]
 
@@ -46,7 +59,7 @@ object Couch {
       )
     }
   }
-  
+
   object MyJsonProtocol extends DefaultJsonProtocol {
     implicit val docFormat = jsonFormat3(RouteTime)
   }
@@ -58,18 +71,14 @@ object Couch {
   }
 
   def getDoc(dbName: String, doc: String): Future[List[ReduceDoc]] = {
-    val pipeline: HttpRequest => Future[String] = (
+    val pipeline: HttpRequest => Future[List[ReduceDoc]] = (
       addHeader("", "")
       ~> sendReceive
-      ~> unmarshal[String]
+      ~> unmarshal[List[ReduceDoc]]
     )
 
-    pipeline(Get(s"http://127.0.0.1:5984/$dbName/$doc")).map(json => {
-      (Json.parse(json) \ "rows").validate[List[ReduceDoc]] match {
-        case s: JsSuccess[List[ReduceDoc]] => s.get
-        case e: JsError => List()
-      }
-    })
+    val req = HttpRequest(method = GET, uri = s"http://127.0.0.1:5984/$dbName/$doc")
+    pipeline(req)
   }
 
   def insertDoc(dbName: String, doc: RouteTime): Future[HttpResponse] = {
@@ -78,9 +87,9 @@ object Couch {
       ~> sendReceive
     )
 
-    pipeline(Post(s"http://127.0.0.1:5984/$dbName", doc)).map(x => {println(s"!!!!!! insert $x"); x})
+    pipeline(Post(s"http://127.0.0.1:5984/$dbName", doc))
   }
-  
+
   def insertView(dbName: String, viewPath: String, view: String): Future[HttpResponse] = {
     val pipeline: HttpRequest => Future[HttpResponse] = (
       addHeader("", "")
